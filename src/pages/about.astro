@@ -1,0 +1,21 @@
+---
+import { getCollection, render } from 'astro:content';
+import BlogArticle from '../layouts/BlogArticle.astro';
+
+const [about] = await getCollection('about');
+
+if (!about) {
+  throw new Error('Missing src/content/about.mdx content entry.');
+}
+
+const { Content, headings } = await render(about);
+---
+
+<BlogArticle
+  post={about}
+  headings={headings}
+  sidebar={{ ...about.data.sidebar, enable: false, toc: false, relatedPosts: false }}
+  contentFont="ui"
+>
+  <Content />
+</BlogArticle>

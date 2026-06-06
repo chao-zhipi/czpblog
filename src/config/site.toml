@@ -1,0 +1,186 @@
+[config.site]
+title = "czp"
+description = "记录和分享我的开发者旅程。"
+pageTitle = "czp | Digital Space"
+pageDescription = "czp的对外个人数字空间"
+repository = "https://github.com/chao-zhipi"
+footerNote = "© 2026 czpirr. All rights reserved."
+
+[config.vibe]
+showTrail = true
+
+[config.theme]
+# Available palettes:
+# green-soft, green-vivid, rose-soft, pink-soft, purple-soft, blue-soft, orange-soft, brown-soft
+palette = "green-soft"
+
+[config.code]
+lightTheme = "catppuccin-latte"
+darkTheme = "catppuccin-macchiato"
+lineNumbers = true
+wrap = true
+preserveIndent = true
+collapseStyle = "collapsible-auto"
+
+[config.comments]
+enabled = false
+provider = "none"
+show_on_posts = false
+
+[config.search]
+enabled = true
+shortcut = "mod+k"
+placeholder = "search notes..."
+maxResults = 6
+
+[config.blog]
+postsPerPage = 6
+
+[config.comments.giscus]
+repo = ""
+repo_id = ""
+category = ""
+category_id = ""
+mapping = "pathname"
+strict = "0"
+reactions_enabled = "1"
+emit_metadata = "0"
+input_position = "top"
+light_theme = "light"
+dark_theme = "dark"
+lang = "zh-CN"
+loading = "lazy"
+
+[config.comments.utterances]
+repo = ""
+issue_term = "pathname"
+label = "comment"
+theme = "github-light"
+
+[config.comments.waline]
+server_url = ""
+lang = "zh-CN"
+dark = "html.dark"
+pageview = true
+comment = true
+
+[config.profile]
+name = "czp"
+handle = "@czp"
+role = "Developer"
+company = "Gzhu"
+location = "China"
+email = "czpir@outlook.com"
+website = "https://github.com/chao-zhipi"
+github = "https://github.com/chao-zhipi"
+meta = "实验室搬砖人"
+avatar = "/images/logo.png"
+
+[[config.topNav.links]]
+label = "Home"
+href = "/"
+
+[[config.topNav.links]]
+label = "Blog"
+href = "/blog"
+
+[[config.topNav.links]]
+label = "Projects"
+href = "/projects"
+
+[[config.topNav.links]]
+label = "Vibe"
+href = "/vibe"
+
+[[config.topNav.links]]
+label = "About"
+href = "/about"
+
+[config.home]
+layout = "grid"
+
+[config.home.quote]
+text = [
+  "Do or do not.",
+  "There is no try.",
+]
+image = "/images/logo-with-name.png"
+
+[config.home.intro]
+title = "here is czp"
+name = "czp"
+body = [
+  "我是一个记录开发与科研的写作者和爱好者。",
+  "这里更像是一个轻量的个人数字空间，分享科研与技术学习笔记，还有自己做的一些好玩的项目。",
+  "可以在about页面了解更多。",
+]
+image = "/images/logo-cat.png"
+
+[config.home.latest]
+count = 1
+heatmapWeeks = 24
+showHeatmapLatest = true
+excludeDraft = true
+startDate = ""
+dateArchiveBaseHref = ""
+
+
+[[config.home.navigation]]
+icon = "pen"
+title = "学习笔记"
+subtitle = "Essays, notes, and field reports"
+href = "/blog"
+
+[[config.home.navigation]]
+icon = "briefcase"
+title = "简历"
+subtitle = "面试官捞捞我吧/(ㄒoㄒ)/~~"
+href = "/"
+
+[[config.home.navigation]]
+icon = "github"
+title = "Open Source Project"
+subtitle = "更多开源小项目"
+href = "https://github.com/chao-zhipi"
+
+[[config.home.connect]]
+label = "GitHub"
+href = "https://github.com/chao-zhipi"
+icon = "github"
+
+[[config.home.connect]]
+label = "website"
+href = "https://github.com/chao-zhipi"
+icon = "compass"
+
+[[config.home.connect]]
+label = "Blog"
+href = "/blog"
+icon = "book"
+
+[[config.home.connect]]
+label = "Projects"
+href = "/projects"
+icon = "repo"
+
+[[config.home.connect]]
+label = "Email"
+href = "czpir@outlook.com"
+icon = "mail"
+
+
+[[config.home.doing]]
+text = "补充更多的博客文章和开发笔记细节"
+mark = "01"
+
+[[config.home.doing]]
+text = "后端与AI智能体学习中"
+mark = "02"
+
+[[config.home.doing]]
+text = "努力找实习中..."
+mark = "03"
+
+[[config.home.doing]]
+text = "努力跑实验，写论文中..."
+mark = "04"
