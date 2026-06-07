@@ -176,7 +176,7 @@ public class DBContextHolder {
 
 </aside>
 
-### 动态数据源**—— 如何切换数据库连接？**
+### 动态数据源—— 如何切换数据库连接？
 
 Spring 提供了 `AbstractRoutingDataSource`，它可以维护多个数据源，并通过一个"路由 key"来决定当前使用哪个。
 
