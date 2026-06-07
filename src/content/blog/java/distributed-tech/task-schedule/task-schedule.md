@@ -109,7 +109,7 @@ cron表达式（这种东西可以让AI生成没必要）
   0 0 8 ? * MON-FRI    工作日每天 8 点执行
 ```
 
-## **方案二：Spring Schedule 扩展（自动注册任务）**
+## 方案二：Spring Schedule 扩展（自动注册任务）
 
 通过自定义注解 + `SchedulingConfigurer`，**动态扫描并注册任务**，适合同类任务需要统一管理的场景
 

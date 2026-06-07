@@ -21,7 +21,7 @@ sidebar:
 
 ## 为什么需要限流
 
-### **问题背景**
+### 问题背景
 
 以"登录接口"为例，存在以下安全威胁：
 
@@ -31,7 +31,7 @@ sidebar:
 
 > 💡 **理解：** 限流就像超市收银台前的"每人限购 X 件"——不管你是真顾客还是黄牛，规则对所有人公平执行，保护系统正常运转。
 
-### **解决思路**
+### 解决思路
 
 | **防护手段** | **说明** |
 | --- | --- |
@@ -44,7 +44,7 @@ sidebar:
 
 ## 核心概念
 
-### **什么是限流（Rate Limiting）？**
+### 什么是限流（Rate Limiting）？
 
 限流是控制某个资源被访问频率的机制。常见的限流算法：
 
@@ -57,7 +57,7 @@ sidebar:
 
 > Guava `RateLimiter` 使用**令牌桶算法**，`permitsPerSecond=1.0` 表示每秒生成 1 个令牌，即每秒最多处理 1 次请求。
 
-### **什么是浏览器指纹（Browser Fingerprint）？**
+### 什么是浏览器指纹（Browser Fingerprint）？
 
 浏览器指纹是通过收集浏览器特征（屏幕分辨率、插件列表、字体、Canvas 渲染等）生成的唯一标识符，可以在不使用 Cookie 的情况下识别同一用户/设备。
 
@@ -77,7 +77,7 @@ fpPromise
 
 > 💡 以 `visitorId` 作为限流的 key，就能做到**对单个用户/设备维度的限流**，而不是全局限流。
 
-### **什么是服务治理？**
+### 什么是服务治理？
 
 服务治理是对应用可用性和稳定性的一系列手段，包括：
 
@@ -87,9 +87,9 @@ fpPromise
 - **黑白名单**：直接放行或拒绝特定用户
 - **切量**：灰度发布，控制流量比例
 
-## **技术栈准备**
+## 技术栈准备
 
-### **Guava RateLimiter**
+### Guava RateLimiter
 
 Google Guava 库中的限流工具，基于**令牌桶算法**。
 
@@ -118,7 +118,7 @@ rateLimiter.acquire();
 
 > ⚠️ 限流场景应用 `tryAcquire()`，获取不到就直接拒绝，而不是等待。
 
-### **Guava Cache**
+### Guava Cache
 
 轻量级本地缓存，用于存储每个用户的限流器和黑名单记录。
 
@@ -137,11 +137,11 @@ RateLimiter r = loginRecord.getIfPresent("userId_123"); // 不存在返回 null
 Guava Cache 支持**自动过期**，限流记录 1 分钟过期（即 1 分钟内没访问的用户，其限流器会被清理），避免内存泄漏。
 > 
 
-### **Spring AOP**
+### Spring AOP
 
 面向切面编程，让限流逻辑与业务代码解耦。不用在每个接口方法里手写限流代码，只需在方法上加注解。
 
-## **整体架构设计**
+## 整体架构设计
 
 ```
 HTTP 请求
@@ -161,9 +161,9 @@ HTTP 请求
 
 ![image.png](image.png)
 
-## **代码实现详解**
+## 代码实现详解
 
-### **自定义注解 `@AccessInterceptor`**
+### 自定义注解 `@AccessInterceptor`
 
 ```java
 @Documented
@@ -194,7 +194,7 @@ public @interface AccessInterceptor {
 | `blacklistCount` | double | 超过几次限流后进黑名单，0=不启用 | `10` |
 | `fallbackMethod` | String | 被拦截时调用的兜底方法名 | `"loginErr"` |
 
-### **切面核心逻辑**
+### 切面核心逻辑
 
 ```java
 @Slf4j
@@ -300,7 +300,7 @@ public class RateLimiterAOP {
 }
 ```
 
-### **接口使用示例**
+### 接口使用示例
 
 ```java
 @RestController
@@ -340,7 +340,7 @@ public class RateLimiterController {
 
 ---
 
-## **完整执行流程图**
+## 完整执行流程图
 
 ```
 用户请求 GET /api/ratelimiter/login?fingerprint=xxx&uId=1000
@@ -374,9 +374,9 @@ public class RateLimiterController {
 
 ---
 
-## **生产环境注意事项**
+## 生产环境注意事项
 
-### **本地缓存 vs Redis**
+### 本地缓存 vs Redis
 
 | **方面** | **Guava Cache（本地）** | **Redis（分布式）** |
 | --- | --- | --- |
@@ -388,7 +388,7 @@ public class RateLimiterController {
 > 💡 **结论：** 生产环境多实例部署时，应将 `blacklist` 和 `loginRecord` 改用 Redis 实现，否则 A 节点的黑名单 B 节点不知道。
 > 
 
-### **key 的选择策略**
+### key 的选择策略
 
 | **key 来源** | **适用场景** |
 | --- | --- |
@@ -397,7 +397,7 @@ public class RateLimiterController {
 | `IP` | 无登录无指纹时的兜底 |
 | 组合（IP + UserAgent） | 更精准的设备识别 |
 
-### **限流参数调优建议**
+### 限流参数调优建议
 
 ```java
 // 示例：登录接口，每 5 秒 1 次，超过 3 次进黑名单 1 小时
@@ -415,7 +415,7 @@ public class RateLimiterController {
 
 ---
 
-## **小结**
+## 小结
 
 | **技术点** | **作用** |
 | --- | --- |

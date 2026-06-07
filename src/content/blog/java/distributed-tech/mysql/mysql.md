@@ -157,7 +157,7 @@ SELECT sku, unit_price, total_amount FROM user_order WHERE sku = 'SKU001';
 
 ## SQL查询规范
 
-### **查询规范**
+### 查询规范
 
 ```sql
 -- ❌ 禁止
@@ -178,7 +178,7 @@ SELECT COUNT(user_name) FROM user_order;
 SELECT COUNT(*) FROM user_order;
 ```
 
-### **INSERT 规范**
+### INSERT 规范
 
 ```sql
 -- ❌ 不指定字段名
@@ -193,7 +193,7 @@ INSERT INTO user_order (user_name, sku) VALUES
   ('李四', 'SKU002');
 ```
 
-### **分页查询优化**
+### 分页查询优化
 
 ```sql
 -- ❌ 大偏移量 LIMIT 性能极差（全表扫描 + 丢弃前 N 行）
@@ -203,7 +203,7 @@ SELECT a, b, c FROM t1 LIMIT 10000, 20;
 SELECT a, b, c FROM t1 WHERE id > 10000 LIMIT 20;
 ```
 
-### **IN / UNION / OR**
+### IN / UNION / OR
 
 ```sql
 -- IN 列表不超过 500 个值
@@ -219,7 +219,7 @@ WHERE a = 1 OR b = 2
 WHERE a = 1 UNION WHERE b = 2
 ```
 
-### **WHERE 子句规范**
+### WHERE 子句规范
 
 ```sql
 -- ❌ 等号两侧类型不一致（隐式转换导致索引失效）
@@ -235,7 +235,7 @@ WHERE name LIKE '%abc%'
 WHERE order_status = 0 AND name LIKE 'abc%'
 ```
 
-### **其他重要规范**
+### 其他重要规范
 
 | **规范** | **说明** |
 | --- | --- |
@@ -317,7 +317,7 @@ CREATE TABLE `user_order` (
 
 ## SQL操作示例
 
-### **IP 地址存取**
+### IP 地址存取
 
 ```
 -- 插入（IPv4 整数存储）
@@ -334,7 +334,7 @@ SELECT INET_NTOA(3232235777);             -- 转 IP 字符串
 SELECT INET6_NTOA(INET6_ATON('::1'));     -- IPv6 互转验证
 ```
 
-### **JSON 字段查询（MySQL 8.x）**
+### JSON 字段查询
 
 ```
 -- ->> 操作符读取 JSON 路径的值（去掉外层双引号）
@@ -348,7 +348,7 @@ FROM user_order;
 -- 小傅哥 | {"machine": "IPhone 14 Pro", "location": "shanghai"} | IPhone 14 Pro
 ```
 
-### **EXPLAIN 分析索引使用**
+### EXPLAIN 分析索引使用
 
 ```
 -- 分析是否命中唯一索引
@@ -369,7 +369,7 @@ WHERE total_amount > 10
 > - `rows`：预估扫描行数，越小越好
 > - `Extra`：`Using index` 表示覆盖索引（最优），`Using filesort` 表示需要排序
 
-### **FOR UPDATE（悲观锁）**
+### FOR UPDATE（悲观锁）
 
 ```
 -- 事务中锁定指定行，防止并发修改
@@ -388,7 +388,7 @@ COMMIT;
 > **注意**：`FOR UPDATE` 必须在索引列上使用，否则退化为**表锁**，阻塞整张表的写入。
 > 
 
-### **行级锁 UPDATE**
+### 行级锁 UPDATE
 
 ```
 -- order_id 是唯一索引 → 行级锁（只锁这一行）
@@ -399,7 +399,7 @@ WHERE order_id = 'ORD002' AND order_status = 0;
 -- 若 WHERE 没有命中索引 → 表锁（锁住整张表，并发性差）
 ```
 
-### **表锁触发场景**
+### 表锁触发场景
 
 | **操作** | **说明** |
 | --- | --- |

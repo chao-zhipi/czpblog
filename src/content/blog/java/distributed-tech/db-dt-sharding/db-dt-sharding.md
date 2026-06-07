@@ -53,9 +53,9 @@ sidebar:
 
 ---
 
-## **技术原理详解**
+## 技术原理详解
 
-### **散列算法 —— 如何让数据均匀分布？**
+### 散列算法 —— 如何让数据均匀分布？
 
 路由的核心目标是让用户数据**均匀地**落到各库各表，而不是全挤在某一个地方。
 
@@ -121,7 +121,7 @@ public static int disturbHashIdx(String key, int size) {
 
 </aside>
 
-### 路由寻址**—— 如何确定具体的库和表？**
+### 路由寻址—— 如何确定具体的库和表？
 
 假设有 **2个库 × 4张表 = 8个槽位**，类比 HashMap 的 8格桶。
 
@@ -146,7 +146,7 @@ tbIdx = 5 - 4 * (2-1) = 1 → 第 1 表
 
 最终路由到：`bugstack_02` 库的 `user_01` 表。
 
-### **ThreadLocal —— 路由信息如何传递？**
+### ThreadLocal —— 路由信息如何传递？
 
 AOP 切面计算出 `dbIdx` 和 `tbIdx` 后，不能直接传参（MyBatis 的接口不支持），需要用 ThreadLocal 在**同一个线程内**传递数据。
 
@@ -200,7 +200,7 @@ public class DynamicDataSource extends AbstractRoutingDataSource {
 
 ## 完整实现流程
 
-### **自定义路由注解**
+### 自定义路由注解
 
 ```java
 @Documented
@@ -228,7 +228,7 @@ public interface IUserDao {
 
 ---
 
-### **读取配置（EnvironmentAware）**
+### 读取配置（EnvironmentAware）
 
 配置文件结构（application.yml）：
 
@@ -271,7 +271,7 @@ public void setEnvironment(Environment environment) {
 
 ---
 
-### **创建动态数据源 Bean**
+### 创建动态数据源 Bean
 
 ```java
 @Bean
@@ -295,7 +295,7 @@ public DataSource dataSource() {
 
 ---
 
-### **AOP 切面 —— 核心路由逻辑**
+### AOP 切面 —— 核心路由逻辑
 
 ```java
 @Around("aopPoint() && @annotation(dbRouter)")
@@ -334,7 +334,7 @@ public Object doRouter(ProceedingJoinPoint jp, DBRouter dbRouter) throws Throwab
 
 ---
 
-### **4.5 MyBatis SQL 配置**
+### MyBatis SQL 配置
 
 表名用 `${tbIdx}` 占位符动态拼接（从 ThreadLocal 中读取）：
 
@@ -360,7 +360,7 @@ public Object doRouter(ProceedingJoinPoint jp, DBRouter dbRouter) throws Throwab
 
 ---
 
-### **4.6 数据库建表**
+### 数据库建表
 
 ```
 -- 库1
@@ -382,7 +382,7 @@ CREATE TABLE user_01 ( ... );
 
 ---
 
-## **五、完整调用链路图**
+## 完整调用链路图
 
 ```
 请求进入（带 userId）
@@ -416,7 +416,7 @@ CREATE TABLE user_01 ( ... );
 
 ---
 
-## **六、关键技术总结**
+## 关键技术总结
 
 | **技术点** | **作用** | **关键类/接口** |
 | --- | --- | --- |

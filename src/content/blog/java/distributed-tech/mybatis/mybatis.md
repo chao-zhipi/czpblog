@@ -17,7 +17,7 @@ sidebar:
   toc: true
   relatedPosts: true
 ---
-## **案例背景**
+## 案例背景
 
 - **雇员表** `employee`：存储员工基本信息与职级
 - **薪资表** `employee_salary`：每名员工当前薪酬（1v1）
@@ -25,11 +25,11 @@ sidebar:
 
 通过这三张表，覆盖：插入、批量插入、修改、查询、事务、插件加解密等核心操作。
 
-## **领域模型（结合 DDD）**
+## 领域模型（结合 DDD
 
 MyBatis 操作放在 **infrastructure（基础设施层）**，业务模型放在 **domain（领域层）**，两层之间通过 **仓储接口** 解耦。
 
-### **值对象（Value Object）**
+### 值对象（Value Object）
 
 > 当实体的某个字段有**明确范围**时，提取为值对象（枚举），与具体业务绑定，不共用。
 > 
@@ -50,7 +50,7 @@ public enum EmployeePostVO {
 }
 ```
 
-### **实体对象（Entity）**
+### 实体对象（Entity）
 
 > 对数据库表的抽象，通常 1:1，复杂场景可以 1:N。
 > 
@@ -70,7 +70,7 @@ public class EmployeeSalaryAdjustEntity {
 }
 ```
 
-### **聚合对象（Aggregate）**
+### 聚合对象（Aggregate）
 
 > 封装多个实体/值对象，代表一类业务的聚合，通常作为 Service 入参。
 > 
@@ -85,7 +85,7 @@ public class AdjustSalaryApplyOrderAggregate {
 }
 ```
 
-### **仓储接口（Repository）**
+### 仓储接口（Repository）
 
 > DDD 依赖倒置：domain 层定义接口，infrastructure 层实现。  
 好处：天然隔离 PO（数据库持久化对象），外层无法乱引用。
@@ -98,7 +98,7 @@ public interface ISalaryAdjustRepository {
 }
 ```
 
-### **服务接口（Service）**
+### 服务接口（Service）
 
 ```java
 public interface ISalaryAdjustApplyService {
@@ -109,7 +109,7 @@ public interface ISalaryAdjustApplyService {
 > 复杂场景必须结合**设计模式**，避免所有逻辑堆在实现类里。
 > 
 
-## **配置文件**
+## 配置文件
 
 MyBatis 配置统一放在 `xfg-dev-tech-app` 模块下，便于管理和上线后提取。
 
@@ -124,9 +124,9 @@ mybatis:
 
 ---
 
-## **功能实现**
+## 功能实现
 
-### **插入 & 批量插入**
+### 插入 & 批量插入
 
 **Mapper 接口**（infrastructure 层）：
 
@@ -164,9 +164,9 @@ public interface IEmployeeDAO {
 
 ---
 
-### **事务**
+### 事务
 
-### **事务隔离级别（isolation）**
+### 事务隔离级别（isolation）
 
 | **级别** | **说明** | **问题** |
 | --- | --- | --- |
@@ -176,7 +176,7 @@ public interface IEmployeeDAO {
 | `REPEATABLE_READ` | 同一事务多次读结果一致 | 幻读 |
 | `SERIALIZABLE` | 最严格，完全串行 | 并发性能差 |
 
-### **事务传播行为（propagation）**
+### 事务传播行为（propagation）
 
 | **行为** | **说明** |
 | --- | --- |
@@ -188,7 +188,7 @@ public interface IEmployeeDAO {
 | `NEVER` | 非事务执行，有事务则抛异常 |
 | `NESTED` | 嵌套事务，外部回滚则一起回滚 |
 
-### **注解事务（声明式）**
+### 注解事务（声明式）
 
 ```java
 @Transactional(
@@ -208,7 +208,7 @@ public String adjustSalary(AdjustSalaryApplyOrderAggregate aggregate) {
 > 注意：放在 **repository 实现类**中，而非 service 层。
 > 
 
-### **4.2.2 编程事务（TransactionTemplate）**
+### 编程事务（TransactionTemplate）
 
 更细粒度控制，可以根据业务结果手动回滚（不依赖异常）。
 
@@ -251,11 +251,11 @@ public void insertEmployeeInfo(EmployeeInfoEntity entity) {
 
 ---
 
-### **MyBatis 插件开发（数据加解密）**
+### MyBatis 插件开发（数据加解密）
 
 MyBatis 插件基于**拦截器**机制，常见用途：字段加解密、分库分表路由、SQL 日志打印。
 
-### **插件核心结构**
+### 插件核心结构
 
 ```java
 @Intercepts({
@@ -352,7 +352,7 @@ public class FieldEncryptionAndDecryptionMybatisPlugin implements Interceptor {
 }
 ```
 
-### **注册插件到 Spring**
+### 注册插件到 Spring
 
 ```java
 @Bean
@@ -371,9 +371,9 @@ public FieldEncryptionAndDecryptionMybatisPlugin encryptPlugin() {
 
 ---
 
-## **知识点总结**
+## 知识点总结
 
-### **MyBatis 核心对象**
+### MyBatis 核心对象
 
 | **对象** | **说明** |
 | --- | --- |
@@ -383,7 +383,7 @@ public FieldEncryptionAndDecryptionMybatisPlugin encryptPlugin() {
 | `Executor` | SQL 执行器，插件通常拦截此层 |
 | `Mapper` | 接口代理，底层由 JDK 动态代理生成实现类 |
 
-### **DDD 分层与 MyBatis 位置**
+### DDD 分层与 MyBatis 位置
 
 ```
 app（应用层）
@@ -401,7 +401,7 @@ app（应用层）
 > **核心原则**：PO 只在 infrastructure 内部流转，不暴露给 domain 或 app 层。
 > 
 
-### **常见 XML 标签速记**
+### 常见 XML 标签速记
 
 | **标签** | **用途** |
 | --- | --- |
