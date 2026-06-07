@@ -6,11 +6,11 @@
     "node": ">=22.12.0"
   },
   "scripts": {
-    "dev": "astro dev",
+    "dev": "ASTRO_TELEMETRY_DISABLED=1 bun node_modules/astro/bin/astro.mjs dev",
     "fonts:ui": "bun scripts/fonts/subset-ui-font.ts",
-    "build": "bun run fonts:ui && astro build && pagefind --site dist --output-subdir pagefind --root-selector main --exclude-selectors \"[data-pagefind-ignore]\"",
-    "preview": "astro preview",
-    "astro": "astro",
+    "build": "bun run fonts:ui && ASTRO_TELEMETRY_DISABLED=1 bun node_modules/astro/bin/astro.mjs build && bun node_modules/pagefind/lib/runner/bin.cjs --site dist --output-subdir pagefind --root-selector main --exclude-selectors \"[data-pagefind-ignore]\"",
+    "preview": "ASTRO_TELEMETRY_DISABLED=1 bun node_modules/astro/bin/astro.mjs preview",
+    "astro": "ASTRO_TELEMETRY_DISABLED=1 bun node_modules/astro/bin/astro.mjs",
     "post:new": "bun scripts/new-content.ts blog",
     "vibe:new": "bun scripts/new-content.ts vibe",
     "lint": "eslint .",

@@ -15,6 +15,12 @@ type PagefindModule = {
   search: (query: string) => Promise<{ results: PagefindResult[] }>;
 };
 
+type SiteSearchWindow = Window & {
+  __navfolioSiteSearchCleanup?: () => void;
+  __navfolioSiteSearchCurrentRoot?: HTMLElement;
+  __navfolioSiteSearchEvents?: boolean;
+};
+
 const focusableSelector = [
   'a[href]',
   'button:not([disabled])',
@@ -183,108 +189,145 @@ function debounce<T extends (...args: any[]) => void>(callback: T, delay: number
 }
 
 export function initSiteSearch() {
-  for (const root of document.querySelectorAll<HTMLElement>('[data-site-search-root]')) {
-    if (root.dataset.siteSearchReady === 'true') continue;
-    root.dataset.siteSearchReady = 'true';
+  const searchWindow = window as SiteSearchWindow;
+  const root = document.querySelector<HTMLElement>('[data-site-search-root]');
 
-    const trigger = root.querySelector<HTMLButtonElement>('[data-site-search-trigger]');
-    const dialog = root.querySelector<HTMLElement>('[data-site-search-dialog]');
-    const input = root.querySelector<HTMLInputElement>('[data-site-search-input]');
-    const layer = root.querySelector<HTMLElement>('[data-site-search-layer]');
-    const closeButtons = root.querySelectorAll<HTMLButtonElement>('[data-site-search-close]');
-    const maxResults = Number(root.dataset.searchMaxResults || 6);
+  if (!root) {
+    searchWindow.__navfolioSiteSearchCleanup?.();
+    searchWindow.__navfolioSiteSearchCleanup = undefined;
+    searchWindow.__navfolioSiteSearchCurrentRoot = undefined;
+    return;
+  }
 
-    if (!trigger || !dialog || !input || !layer) continue;
+  if (searchWindow.__navfolioSiteSearchCurrentRoot === root) {
+    return;
+  }
 
-    for (const orphanedLayer of document.body.querySelectorAll<HTMLElement>(
-      '[data-site-search-layer]',
-    )) {
-      if (orphanedLayer !== layer) orphanedLayer.remove();
-    }
+  searchWindow.__navfolioSiteSearchCleanup?.();
+  searchWindow.__navfolioSiteSearchCurrentRoot = root;
 
-    searchLayers.set(root, layer);
-    document.body.append(layer);
+  const controller = new AbortController();
+  const { signal } = controller;
 
-    const close = () => {
-      setExpanded(root, false);
-      input.value = '';
+  searchWindow.__navfolioSiteSearchCleanup = () => {
+    const layer = searchLayers.get(root);
+    layer?.remove();
+    controller.abort();
+    searchWindow.__navfolioSiteSearchCleanup = undefined;
+    searchWindow.__navfolioSiteSearchCurrentRoot = undefined;
+  };
+
+  const trigger = root.querySelector<HTMLButtonElement>('[data-site-search-trigger]');
+  const dialog = root.querySelector<HTMLElement>('[data-site-search-dialog]');
+  const input = root.querySelector<HTMLInputElement>('[data-site-search-input]');
+  const layer = root.querySelector<HTMLElement>('[data-site-search-layer]');
+  const closeButtons = root.querySelectorAll<HTMLButtonElement>('[data-site-search-close]');
+  const maxResults = Number(root.dataset.searchMaxResults || 6);
+
+  if (!trigger || !dialog || !input || !layer) return;
+
+  for (const orphanedLayer of document.body.querySelectorAll<HTMLElement>(
+    '[data-site-search-layer]',
+  )) {
+    if (orphanedLayer !== layer) orphanedLayer.remove();
+  }
+
+  searchLayers.set(root, layer);
+  document.body.append(layer);
+
+  const close = () => {
+    setExpanded(root, false);
+    input.value = '';
+    renderResults(root, []);
+    setStatus(root, root.dataset.searchIdleLabel || 'Start typing to search.');
+    lastFocusedElement?.focus?.();
+  };
+
+  const open = () => {
+    lastFocusedElement =
+      document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    setExpanded(root, true);
+    window.setTimeout(() => input.focus(), 30);
+    void loadPagefind().catch(() => {
+      setStatus(root, root.dataset.searchUnavailableLabel || 'Search index is not available yet.');
+    });
+  };
+
+  const runSearchNow = async () => {
+    const query = input.value.trim();
+
+    if (!query) {
       renderResults(root, []);
       setStatus(root, root.dataset.searchIdleLabel || 'Start typing to search.');
-      lastFocusedElement?.focus?.();
-    };
+      return;
+    }
 
-    const open = () => {
-      lastFocusedElement =
-        document.activeElement instanceof HTMLElement ? document.activeElement : null;
-      setExpanded(root, true);
-      window.setTimeout(() => input.focus(), 30);
-      void loadPagefind().catch(() => {
-        setStatus(
-          root,
-          root.dataset.searchUnavailableLabel || 'Search index is not available yet.',
-        );
-      });
-    };
+    setStatus(root, root.dataset.searchLoadingLabel || 'Searching...');
 
-    const runSearchNow = async () => {
-      const query = input.value.trim();
+    try {
+      const pagefind = await loadPagefind();
+      const search = await pagefind.search(query);
+      const resultData = await Promise.all(
+        search.results.slice(0, maxResults).map((result) => result.data()),
+      );
 
-      if (!query) {
-        renderResults(root, []);
-        setStatus(root, root.dataset.searchIdleLabel || 'Start typing to search.');
-        return;
-      }
+      renderResults(root, resultData);
+      setStatus(
+        root,
+        resultData.length > 0
+          ? `${resultData.length} result${resultData.length === 1 ? '' : 's'}`
+          : root.dataset.searchEmptyLabel || 'No notes found.',
+      );
+    } catch {
+      renderResults(root, []);
+      setStatus(root, root.dataset.searchUnavailableLabel || 'Search index is not available yet.');
+    }
+  };
+  const runSearch = debounce(runSearchNow, 120);
 
-      setStatus(root, root.dataset.searchLoadingLabel || 'Searching...');
-
-      try {
-        const pagefind = await loadPagefind();
-        const search = await pagefind.search(query);
-        const resultData = await Promise.all(
-          search.results.slice(0, maxResults).map((result) => result.data()),
-        );
-
-        renderResults(root, resultData);
-        setStatus(
-          root,
-          resultData.length > 0
-            ? `${resultData.length} result${resultData.length === 1 ? '' : 's'}`
-            : root.dataset.searchEmptyLabel || 'No notes found.',
-        );
-      } catch {
-        renderResults(root, []);
-        setStatus(
-          root,
-          root.dataset.searchUnavailableLabel || 'Search index is not available yet.',
-        );
-      }
-    };
-    const runSearch = debounce(runSearchNow, 120);
-
-    trigger.addEventListener('click', open);
-    root.addEventListener('site-search:open', open);
-    input.addEventListener('input', runSearch);
-    input.addEventListener('keydown', (event) => {
+  trigger.addEventListener('click', open, { signal });
+  root.addEventListener('site-search:open', open, { signal });
+  input.addEventListener('input', runSearch, { signal });
+  input.addEventListener(
+    'keydown',
+    (event) => {
       if (event.key !== 'Enter') return;
 
       event.preventDefault();
       void runSearchNow();
-    });
+    },
+    { signal },
+  );
 
-    for (const button of closeButtons) {
-      button.addEventListener('click', close);
-    }
+  for (const button of closeButtons) {
+    button.addEventListener('click', close, { signal });
+  }
 
-    layer.addEventListener('click', (event) => {
+  layer.addEventListener(
+    'click',
+    (event) => {
       if ((event.target as Element).matches('[data-site-search-backdrop]')) close();
       if ((event.target as Element).closest('[data-site-search-results] a')) close();
-    });
+    },
+    { signal },
+  );
 
-    document.addEventListener('keydown', (event) => {
+  document.addEventListener(
+    'keydown',
+    (event) => {
       if (root.dataset.searchOpen !== 'true') return;
       if (event.key === 'Escape') close();
       trapFocus(event, dialog);
-    });
+    },
+    { signal },
+  );
+
+  if (!searchWindow.__navfolioSiteSearchEvents) {
+    searchWindow.__navfolioSiteSearchEvents = true;
+    document.addEventListener('astro:before-swap', () =>
+      searchWindow.__navfolioSiteSearchCleanup?.(),
+    );
+    window.addEventListener('pagehide', () => searchWindow.__navfolioSiteSearchCleanup?.());
   }
 }
 

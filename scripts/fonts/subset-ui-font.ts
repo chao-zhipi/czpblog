@@ -96,17 +96,20 @@ function runSubset() {
   ];
 
   for (const { command, args: commandArgs } of commands) {
-    const result = spawnSync(command, commandArgs, { stdio: 'inherit' });
+    const result = spawnSync(command, commandArgs, { stdio: 'pipe', encoding: 'utf8' });
     if (result.status === 0) {
-      return;
+      if (result.stdout) process.stdout.write(result.stdout);
+      if (result.stderr) process.stderr.write(result.stderr);
+      return true;
     }
 
     if (result.error && 'code' in result.error && result.error.code === 'ENOENT') continue;
   }
 
-  throw new Error(
-    'Unable to run fonttools. Install it with `python -m pip install --user fonttools brotli`, or make `pyftsubset` available on PATH.',
+  console.warn(
+    'Skipping UI font subsetting because fonttools is unavailable. Install it with `python -m pip install --user fonttools brotli`, or make `pyftsubset` available on PATH.',
   );
+  return false;
 }
 
 const chars = new Set<string>();
@@ -148,7 +151,9 @@ if (!existsSync(sourceFontPath)) {
   );
 }
 
-runSubset();
+const generatedSubset = runSubset();
 
 console.log(`Generated ${uiCharsPath} with ${uiChars.length} CJK UI characters.`);
-console.log(`Generated ${outputFontPath} from ${sourceFontPath}.`);
+if (generatedSubset) {
+  console.log(`Generated ${outputFontPath} from ${sourceFontPath}.`);
+}

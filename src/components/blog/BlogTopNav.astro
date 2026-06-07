@@ -179,147 +179,207 @@ const shouldShowTocAction = showTocIcon && tocItems.length > 0;
 </header>
 
 <script>
+  type NavfolioWindow = Window & {
+    __navfolioTopNavCleanup?: () => void;
+    __navfolioTopNavEvents?: boolean;
+    __navfolioTopNavHeader?: HTMLElement;
+  };
+
   const initMobileTopNav = () => {
-    for (const header of document.querySelectorAll<HTMLElement>('.blog-top-nav')) {
-      const toggle = header.querySelector<HTMLButtonElement>('[data-mobile-menu-toggle]');
-      const menu = header.querySelector<HTMLElement>('[data-mobile-menu]');
-      const tocTrigger = header.querySelector<HTMLButtonElement>('[data-mobile-toc-trigger]');
-      const tocMenu = header.querySelector<HTMLElement>('[data-nav-toc-menu]');
+    const navWindow = window as NavfolioWindow;
+    const header = document.querySelector<HTMLElement>('.blog-top-nav');
 
-      if (!header.dataset.scrollHideReady) {
-        header.dataset.scrollHideReady = 'true';
+    if (!header) {
+      navWindow.__navfolioTopNavCleanup?.();
+      navWindow.__navfolioTopNavCleanup = undefined;
+      navWindow.__navfolioTopNavHeader = undefined;
+      return;
+    }
 
-        const topRevealOffset = 24;
-        const hideAfterOffset = 96;
-        const scrollIntentDelta = 8;
-        let lastScrollY = window.scrollY;
-        let scrollFrame = 0;
+    if (navWindow.__navfolioTopNavHeader === header) {
+      return;
+    }
 
-        const setNavHidden = (hidden: boolean) => {
-          header.dataset.navHidden = hidden ? 'true' : 'false';
-          header.toggleAttribute('inert', hidden);
-          header.toggleAttribute('aria-hidden', hidden);
-        };
+    navWindow.__navfolioTopNavCleanup?.();
+    navWindow.__navfolioTopNavHeader = header;
 
-        const shouldKeepVisible = () =>
-          window.scrollY <= topRevealOffset ||
-          header.dataset.mobileMenuOpen === 'true' ||
-          header.dataset.mobileTocOpen === 'true' ||
-          header.matches(':focus-within');
+    const controller = new AbortController();
+    const { signal } = controller;
+    let scrollFrame = 0;
 
-        const updateNavVisibility = () => {
-          scrollFrame = 0;
-          const currentScrollY = window.scrollY;
-          const scrollDelta = currentScrollY - lastScrollY;
-
-          if (shouldKeepVisible()) {
-            setNavHidden(false);
-            lastScrollY = currentScrollY;
-            return;
-          }
-
-          if (Math.abs(scrollDelta) < scrollIntentDelta) {
-            return;
-          }
-
-          setNavHidden(scrollDelta > 0 && currentScrollY > hideAfterOffset);
-          lastScrollY = currentScrollY;
-        };
-
-        window.addEventListener(
-          'scroll',
-          () => {
-            if (scrollFrame) {
-              return;
-            }
-
-            scrollFrame = window.requestAnimationFrame(updateNavVisibility);
-          },
-          { passive: true },
-        );
-
-        window.addEventListener('resize', () => {
-          if (window.scrollY <= topRevealOffset) {
-            setNavHidden(false);
-          }
-        });
-
-        setNavHidden(false);
+    navWindow.__navfolioTopNavCleanup = () => {
+      if (scrollFrame) {
+        window.cancelAnimationFrame(scrollFrame);
+        scrollFrame = 0;
       }
 
-      if (toggle && menu && !header.dataset.mobileMenuReady) {
-        header.dataset.mobileMenuReady = 'true';
+      controller.abort();
+      navWindow.__navfolioTopNavCleanup = undefined;
+      navWindow.__navfolioTopNavHeader = undefined;
+    };
 
-        const setMenuOpen = (open: boolean) => {
-          header.dataset.mobileMenuOpen = open ? 'true' : 'false';
-          toggle.setAttribute('aria-expanded', String(open));
-          toggle.setAttribute(
-            'aria-label',
-            open ? 'Close navigation menu' : 'Open navigation menu',
-          );
-        };
-        const setTocOpen = (open: boolean) => {
-          if (!tocTrigger || !tocMenu) {
-            return;
-          }
+    const toggle = header.querySelector<HTMLButtonElement>('[data-mobile-menu-toggle]');
+    const menu = header.querySelector<HTMLElement>('[data-mobile-menu]');
+    const tocTrigger = header.querySelector<HTMLButtonElement>('[data-mobile-toc-trigger]');
+    const tocMenu = header.querySelector<HTMLElement>('[data-nav-toc-menu]');
 
-          header.dataset.mobileTocOpen = open ? 'true' : 'false';
-          tocTrigger.setAttribute('aria-expanded', String(open));
-          tocTrigger.setAttribute(
-            'aria-label',
-            open ? 'Close table of contents' : 'Open table of contents',
-          );
-        };
+    const topRevealOffset = 24;
+    const hideAfterOffset = 96;
+    const scrollIntentDelta = 8;
+    let lastScrollY = window.scrollY;
 
-        toggle.addEventListener('click', () => {
+    const setNavHidden = (hidden: boolean) => {
+      header.dataset.navHidden = hidden ? 'true' : 'false';
+      header.toggleAttribute('inert', hidden);
+      header.toggleAttribute('aria-hidden', hidden);
+    };
+
+    const shouldKeepVisible = () =>
+      window.scrollY <= topRevealOffset ||
+      header.dataset.mobileMenuOpen === 'true' ||
+      header.dataset.mobileTocOpen === 'true' ||
+      header.matches(':focus-within');
+
+    const updateNavVisibility = () => {
+      scrollFrame = 0;
+      const currentScrollY = window.scrollY;
+      const scrollDelta = currentScrollY - lastScrollY;
+
+      if (shouldKeepVisible()) {
+        setNavHidden(false);
+        lastScrollY = currentScrollY;
+        return;
+      }
+
+      if (Math.abs(scrollDelta) < scrollIntentDelta) {
+        return;
+      }
+
+      setNavHidden(scrollDelta > 0 && currentScrollY > hideAfterOffset);
+      lastScrollY = currentScrollY;
+    };
+
+    window.addEventListener(
+      'scroll',
+      () => {
+        if (scrollFrame) {
+          return;
+        }
+
+        scrollFrame = window.requestAnimationFrame(updateNavVisibility);
+      },
+      { passive: true, signal },
+    );
+
+    window.addEventListener(
+      'resize',
+      () => {
+        if (window.scrollY <= topRevealOffset) {
+          setNavHidden(false);
+        }
+      },
+      { signal },
+    );
+
+    setNavHidden(false);
+
+    if (toggle && menu) {
+      const setMenuOpen = (open: boolean) => {
+        header.dataset.mobileMenuOpen = open ? 'true' : 'false';
+        toggle.setAttribute('aria-expanded', String(open));
+        toggle.setAttribute('aria-label', open ? 'Close navigation menu' : 'Open navigation menu');
+      };
+      const setTocOpen = (open: boolean) => {
+        if (!tocTrigger || !tocMenu) {
+          return;
+        }
+
+        header.dataset.mobileTocOpen = open ? 'true' : 'false';
+        tocTrigger.setAttribute('aria-expanded', String(open));
+        tocTrigger.setAttribute(
+          'aria-label',
+          open ? 'Close table of contents' : 'Open table of contents',
+        );
+      };
+
+      toggle.addEventListener(
+        'click',
+        () => {
           const nextOpen = header.dataset.mobileMenuOpen !== 'true';
           setMenuOpen(nextOpen);
           header.dataset.navHidden = 'false';
           if (nextOpen) {
             setTocOpen(false);
           }
-        });
+        },
+        { signal },
+      );
 
-        menu.addEventListener('click', (event) => {
+      menu.addEventListener(
+        'click',
+        (event) => {
           if ((event.target as Element).closest?.('[data-mobile-menu-link]')) {
             setMenuOpen(false);
           }
-        });
+        },
+        { signal },
+      );
 
-        tocTrigger?.addEventListener('click', () => {
+      tocTrigger?.addEventListener(
+        'click',
+        () => {
           const nextOpen = header.dataset.mobileTocOpen !== 'true';
           setTocOpen(nextOpen);
           header.dataset.navHidden = 'false';
           if (nextOpen) {
             setMenuOpen(false);
           }
-        });
+        },
+        { signal },
+      );
 
-        tocMenu?.addEventListener('click', (event) => {
+      tocMenu?.addEventListener(
+        'click',
+        (event) => {
           if ((event.target as Element).closest?.('[data-nav-toc-link]')) {
             setTocOpen(false);
           }
-        });
+        },
+        { signal },
+      );
 
-        document.addEventListener('click', (event) => {
+      document.addEventListener(
+        'click',
+        (event) => {
           if (!header.contains(event.target as Node)) {
             setMenuOpen(false);
             setTocOpen(false);
           }
-        });
+        },
+        { signal },
+      );
 
-        document.addEventListener('keydown', (event) => {
+      document.addEventListener(
+        'keydown',
+        (event) => {
           if (event.key === 'Escape') {
             setMenuOpen(false);
             setTocOpen(false);
           }
-        });
-      }
+        },
+        { signal },
+      );
+    }
+
+    if (!navWindow.__navfolioTopNavEvents) {
+      navWindow.__navfolioTopNavEvents = true;
+      document.addEventListener('astro:page-load', initMobileTopNav);
+      document.addEventListener('astro:before-swap', () => navWindow.__navfolioTopNavCleanup?.());
+      window.addEventListener('pagehide', () => navWindow.__navfolioTopNavCleanup?.());
     }
   };
 
   initMobileTopNav();
-  document.addEventListener('astro:page-load', initMobileTopNav);
 </script>
 
 <style>
