@@ -1,7 +1,7 @@
 ---
 title: "ddd建模方法"
 description: "ddd建模方法的学习笔记，有关四色建模"
-date: "2026-06-28T12:47:11.157Z"
+date: "2026-05-28T12:47:11.157Z"
 draft: false
 showHeroImage: false
 tags:
