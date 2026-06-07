@@ -439,7 +439,7 @@ const hasSidebar = shouldRenderSidebar && hasToc;
   }
 
   .article-content :global(thead) {
-    background: var(--paper-surface-muted);
+    background: transparent;
   }
 
   .article-content :global(tr) {
@@ -459,9 +459,19 @@ const hasSidebar = shouldRenderSidebar && hasToc;
   }
 
   .article-content :global(th) {
+    background: var(--paper-surface-muted);
+    background-clip: padding-box;
     color: var(--paper-ink);
     font-weight: 700;
     text-align: left;
+  }
+
+  .article-content :global(thead tr:first-child th:first-child) {
+    border-top-left-radius: 7px;
+  }
+
+  .article-content :global(thead tr:first-child th:last-child) {
+    border-top-right-radius: 7px;
   }
 
   .article-content :global(th:last-child),
