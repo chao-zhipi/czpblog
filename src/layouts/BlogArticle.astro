@@ -8,6 +8,7 @@ import BaseHead from '../components/BaseHead.astro';
 import CommentSection from '../components/comments/CommentSection.astro';
 import { getThemePalette, getSiteConfig } from '../data/site';
 import { sortByDateDesc } from '../utils/content-dates';
+import { ListTree, X } from 'lucide-astro';
 const { comments } = await getSiteConfig();
 import { getSeriesContext, slugifyGroupName } from '../utils/content-groups';
 
@@ -135,6 +136,9 @@ const hasSidebar = shouldRenderSidebar && hasToc;
     }
   </head>
   <body class:list={['blog-detail-page', { 'blog-content-ui': contentFont === 'ui' }]}>
+    <div class="reading-progress" aria-hidden="true">
+      <span data-reading-progress-bar></span>
+    </div>
     <BlogTopNav showTocIcon={hasToc} tocItems={tocItems} />
     <div class="blog-background" aria-hidden="true"></div>
 
@@ -210,6 +214,182 @@ const hasSidebar = shouldRenderSidebar && hasToc;
         )
       }
     </main>
+    {
+      hasToc && (
+        <aside
+          class="mobile-floating-toc"
+          aria-label="Mobile table of contents"
+          data-mobile-floating-toc
+          data-pagefind-ignore
+        >
+          <button
+            class="mobile-floating-toc-trigger"
+            type="button"
+            aria-label="Open table of contents"
+            aria-expanded="false"
+            aria-controls="mobile-floating-toc-panel"
+            title="Table of contents"
+            data-mobile-floating-toc-trigger
+          >
+            <ListTree size={18} stroke-width={2} />
+          </button>
+          <div class="mobile-floating-toc-backdrop" data-mobile-floating-toc-backdrop />
+          <nav
+            class="mobile-floating-toc-panel"
+            id="mobile-floating-toc-panel"
+            aria-label="Table of contents"
+            data-toc-root
+            data-mobile-floating-toc-panel
+          >
+            <header>
+              <p>目录</p>
+              <button
+                type="button"
+                aria-label="Close table of contents"
+                title="Close"
+                data-mobile-floating-toc-close
+              >
+                <X size={17} stroke-width={2} />
+              </button>
+            </header>
+            <ol>
+              {tocItems.map((item, index) => (
+                <li>
+                  <a href={item.href} data-toc-link data-toc-hash={item.href}>
+                    <span>{index + 1}</span>
+                    {item.label}
+                  </a>
+                </li>
+              ))}
+            </ol>
+          </nav>
+        </aside>
+      )
+    }
+    <script>
+      type ArticleProgressWindow = Window & {
+        __navfolioArticleToolsCleanup?: () => void;
+        __navfolioArticleToolsEvents?: boolean;
+        __navfolioArticleToolsPageKey?: string;
+      };
+
+      const initArticleTools = () => {
+        const articleWindow = window as ArticleProgressWindow;
+        const pageKey = `${window.location.pathname}${window.location.search}`;
+
+        if (articleWindow.__navfolioArticleToolsPageKey === pageKey) {
+          return;
+        }
+
+        articleWindow.__navfolioArticleToolsCleanup?.();
+        articleWindow.__navfolioArticleToolsPageKey = pageKey;
+
+        const controller = new AbortController();
+        const { signal } = controller;
+        const progressBar = document.querySelector<HTMLElement>('[data-reading-progress-bar]');
+        const articleContent = document.querySelector<HTMLElement>('.article-content');
+        const tocRoot = document.querySelector<HTMLElement>('[data-mobile-floating-toc]');
+        const tocTrigger = tocRoot?.querySelector<HTMLButtonElement>(
+          '[data-mobile-floating-toc-trigger]',
+        );
+        const tocPanel = tocRoot?.querySelector<HTMLElement>('[data-mobile-floating-toc-panel]');
+        const tocBackdrop = tocRoot?.querySelector<HTMLElement>(
+          '[data-mobile-floating-toc-backdrop]',
+        );
+        const tocClose = tocRoot?.querySelector<HTMLButtonElement>(
+          '[data-mobile-floating-toc-close]',
+        );
+        let progressFrame = 0;
+
+        const updateProgress = () => {
+          progressFrame = 0;
+
+          if (!progressBar || !articleContent) {
+            return;
+          }
+
+          const articleTop = articleContent.getBoundingClientRect().top + window.scrollY;
+          const articleHeight = articleContent.scrollHeight;
+          const maxScroll = Math.max(1, articleHeight - window.innerHeight * 0.72);
+          const progress = Math.min(1, Math.max(0, (window.scrollY - articleTop) / maxScroll));
+          progressBar.style.transform = `scaleX(${progress})`;
+        };
+
+        const scheduleProgress = () => {
+          if (progressFrame) {
+            return;
+          }
+
+          progressFrame = window.requestAnimationFrame(updateProgress);
+        };
+
+        const setTocOpen = (open: boolean) => {
+          if (!tocRoot || !tocTrigger || !tocPanel) {
+            return;
+          }
+
+          tocRoot.dataset.open = String(open);
+          tocTrigger.setAttribute('aria-expanded', String(open));
+          tocPanel.toggleAttribute('inert', !open);
+        };
+
+        window.addEventListener('scroll', scheduleProgress, { passive: true, signal });
+        window.addEventListener('resize', scheduleProgress, { signal });
+        updateProgress();
+
+        if (tocRoot && tocTrigger && tocPanel) {
+          setTocOpen(false);
+
+          tocTrigger.addEventListener('click', () => setTocOpen(tocRoot.dataset.open !== 'true'), {
+            signal,
+          });
+          tocClose?.addEventListener('click', () => setTocOpen(false), { signal });
+          tocBackdrop?.addEventListener('click', () => setTocOpen(false), { signal });
+          tocPanel.addEventListener(
+            'click',
+            (event) => {
+              if ((event.target as Element).closest?.('[data-toc-link]')) {
+                setTocOpen(false);
+              }
+            },
+            { signal },
+          );
+          document.addEventListener(
+            'keydown',
+            (event) => {
+              if (event.key === 'Escape') {
+                setTocOpen(false);
+              }
+            },
+            { signal },
+          );
+        }
+
+        articleWindow.__navfolioArticleToolsCleanup = () => {
+          if (progressFrame) {
+            window.cancelAnimationFrame(progressFrame);
+            progressFrame = 0;
+          }
+
+          controller.abort();
+          articleWindow.__navfolioArticleToolsCleanup = undefined;
+          articleWindow.__navfolioArticleToolsPageKey = undefined;
+        };
+
+        if (!articleWindow.__navfolioArticleToolsEvents) {
+          articleWindow.__navfolioArticleToolsEvents = true;
+          document.addEventListener('astro:page-load', initArticleTools);
+          document.addEventListener('astro:before-swap', () =>
+            articleWindow.__navfolioArticleToolsCleanup?.(),
+          );
+          window.addEventListener('pagehide', () =>
+            articleWindow.__navfolioArticleToolsCleanup?.(),
+          );
+        }
+      };
+
+      initArticleTools();
+    </script>
   </body>
 </html>
 
@@ -224,6 +404,26 @@ const hasSidebar = shouldRenderSidebar && hasToc;
     overflow-x: hidden;
     background: var(--paper-detail-bg);
     color: var(--paper-ink);
+  }
+
+  .reading-progress {
+    position: fixed;
+    inset: 0 0 auto;
+    z-index: 90;
+    height: 3px;
+    background: color-mix(in srgb, var(--paper-line) 70%, transparent);
+    pointer-events: none;
+  }
+
+  .reading-progress span {
+    display: block;
+    width: 100%;
+    height: 100%;
+    background: var(--paper-accent);
+    box-shadow: 0 0 12px color-mix(in srgb, var(--paper-accent) 32%, transparent);
+    transform: scaleX(0);
+    transform-origin: left center;
+    transition: transform 90ms linear;
   }
 
   .blog-background {
@@ -533,6 +733,10 @@ const hasSidebar = shouldRenderSidebar && hasToc;
     display: none;
   }
 
+  .mobile-floating-toc {
+    display: none;
+  }
+
   .series-neighbor-nav {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -626,6 +830,146 @@ const hasSidebar = shouldRenderSidebar && hasToc;
 
     .series-neighbor-nav .next {
       text-align: left;
+    }
+
+    .mobile-floating-toc {
+      display: block;
+    }
+
+    .mobile-floating-toc-trigger {
+      position: fixed;
+      right: 16px;
+      bottom: calc(18px + env(safe-area-inset-bottom));
+      z-index: 82;
+      display: grid;
+      place-items: center;
+      width: 46px;
+      height: 46px;
+      padding: 0;
+      border: 1px solid var(--paper-line-strong);
+      border-radius: 8px;
+      background: var(--paper-nav);
+      color: var(--paper-ink);
+      box-shadow: var(--paper-shadow-lift);
+      cursor: pointer;
+    }
+
+    .mobile-floating-toc-trigger:hover,
+    .mobile-floating-toc-trigger:focus-visible {
+      color: var(--paper-accent);
+      outline: none;
+    }
+
+    .mobile-floating-toc-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 80;
+      background: rgba(17, 20, 17, 0.34);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 160ms ease;
+    }
+
+    .mobile-floating-toc-panel {
+      position: fixed;
+      right: 12px;
+      bottom: calc(76px + env(safe-area-inset-bottom));
+      left: 12px;
+      z-index: 81;
+      display: grid;
+      max-height: min(62vh, 520px);
+      overflow: hidden;
+      border: 1px solid var(--paper-line);
+      border-radius: 8px;
+      background: var(--paper-nav);
+      box-shadow: var(--paper-shadow-lift);
+      color: var(--paper-ink);
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(10px);
+      transition:
+        opacity 160ms ease,
+        transform 160ms ease;
+    }
+
+    .mobile-floating-toc[data-open='true'] .mobile-floating-toc-backdrop,
+    .mobile-floating-toc[data-open='true'] .mobile-floating-toc-panel {
+      opacity: 1;
+      pointer-events: auto;
+      transform: translateY(0);
+    }
+
+    .mobile-floating-toc-panel header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 12px 10px 14px;
+      border-bottom: 1px solid var(--paper-line);
+    }
+
+    .mobile-floating-toc-panel p {
+      margin: 0;
+      color: var(--paper-accent);
+      font-family: var(--font-ui-label);
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+    }
+
+    .mobile-floating-toc-panel button {
+      display: grid;
+      place-items: center;
+      width: 34px;
+      height: 34px;
+      padding: 0;
+      border: 1px solid var(--paper-line);
+      border-radius: 7px;
+      background: var(--paper-control);
+      color: var(--paper-ink);
+      cursor: pointer;
+    }
+
+    .mobile-floating-toc-panel ol {
+      display: grid;
+      gap: 4px;
+      min-height: 0;
+      margin: 0;
+      overflow: auto;
+      overscroll-behavior: contain;
+      padding: 10px;
+      list-style: none;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .mobile-floating-toc-panel a {
+      display: grid;
+      grid-template-columns: 28px minmax(0, 1fr);
+      gap: 9px;
+      align-items: start;
+      min-height: 40px;
+      padding: 9px 10px;
+      border-radius: 7px;
+      color: var(--paper-ink-soft);
+      font-family: var(--font-serif-cn);
+      font-size: 0.9rem;
+      line-height: 1.38;
+      text-decoration: none;
+    }
+
+    .mobile-floating-toc-panel a:hover,
+    .mobile-floating-toc-panel a[aria-current='true'],
+    .mobile-floating-toc-panel a[data-state='active'] {
+      background: var(--paper-control-hover);
+      color: var(--paper-accent);
+    }
+
+    .mobile-floating-toc-panel span {
+      color: var(--paper-ink-faint);
+      font-family: var(--font-ui-label);
+      font-size: 0.74rem;
+      font-weight: 700;
+      line-height: 1.45;
     }
   }
 
