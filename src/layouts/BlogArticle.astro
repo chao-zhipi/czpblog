@@ -412,6 +412,72 @@ const hasSidebar = shouldRenderSidebar && hasToc;
     font-size: 1.08rem;
   }
 
+  .article-content :global(table) {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    margin: 28px 0 32px;
+    overflow-x: auto;
+    border: 1px solid var(--paper-line-strong);
+    border-radius: 8px;
+    border-spacing: 0;
+    border-collapse: separate;
+    background: var(--paper-surface);
+    font-family: var(--font-article);
+    font-size: 0.96rem;
+    line-height: 1.65;
+    scrollbar-gutter: stable;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .article-content :global(thead),
+  .article-content :global(tbody) {
+    display: table;
+    width: 100%;
+    min-width: 640px;
+    table-layout: fixed;
+  }
+
+  .article-content :global(thead) {
+    background: var(--paper-surface-muted);
+  }
+
+  .article-content :global(tr) {
+    display: table-row;
+  }
+
+  .article-content :global(th),
+  .article-content :global(td) {
+    display: table-cell;
+    min-width: 8rem;
+    padding: 12px 14px;
+    border-right: 1px solid var(--paper-line);
+    border-bottom: 1px solid var(--paper-line);
+    color: var(--paper-ink);
+    overflow-wrap: anywhere;
+    vertical-align: top;
+  }
+
+  .article-content :global(th) {
+    color: var(--paper-ink);
+    font-weight: 700;
+    text-align: left;
+  }
+
+  .article-content :global(th:last-child),
+  .article-content :global(td:last-child) {
+    border-right: 0;
+  }
+
+  .article-content :global(tbody tr:last-child td) {
+    border-bottom: 0;
+  }
+
+  .article-content :global(th code),
+  .article-content :global(td code) {
+    white-space: nowrap;
+  }
+
   .article-content :global(pre:not([data-language])),
   .code-block {
     overflow-x: auto;
@@ -550,6 +616,27 @@ const hasSidebar = shouldRenderSidebar && hasToc;
 
     .series-neighbor-nav .next {
       text-align: left;
+    }
+  }
+
+  @media (max-width: 720px) {
+    .article-content :global(table) {
+      width: calc(100vw - 32px);
+      max-width: calc(100vw - 32px);
+      margin: 22px 0 28px;
+      font-size: 0.88rem;
+      line-height: 1.55;
+    }
+
+    .article-content :global(thead),
+    .article-content :global(tbody) {
+      min-width: min(680px, 178vw);
+    }
+
+    .article-content :global(th),
+    .article-content :global(td) {
+      min-width: 7.5rem;
+      padding: 10px 12px;
     }
   }
 
