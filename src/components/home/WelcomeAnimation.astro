@@ -1,0 +1,572 @@
+<article
+  class="glass-card welcome-animation-card"
+  data-pagefind-ignore
+  aria-label="Welcome animation"
+>
+  <div class="welcome-canvas-frame" data-home-welcome>
+    <canvas width="720" height="180" data-home-welcome-canvas aria-hidden="true"></canvas>
+  </div>
+</article>
+
+<script>
+  type Particle = {
+    x: number;
+    y: number;
+    vx: number;
+    vy: number;
+    life: number;
+    color: string;
+  };
+
+  type Metrics = {
+    width: number;
+    height: number;
+    cell: number;
+    cols: number;
+    rows: number;
+  };
+
+  type Palette = {
+    bg: string;
+    dot: string;
+    ink: string;
+    soft: string;
+    faint: string;
+    body: string;
+    eye: string;
+    white: string;
+    blush: string;
+    pink: string;
+  };
+
+  type WelcomeWindow = Window & {
+    __homeWelcomeAnimationCleanup?: () => void;
+    __homeWelcomeAnimationEventsBound?: boolean;
+  };
+
+  const BODY = [
+    [0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0],
+    [0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0],
+    [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
+    [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
+    [0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0],
+    [0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0],
+    [0, 0, 0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 0, 0],
+    [0, 0, 0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 0, 0],
+  ];
+
+  const STARS = [
+    [6, 3, 1],
+    [16, 2, 0],
+    [30, 4, 0],
+    [45, 3, 1],
+    [60, 5, 0],
+    [68, 2, 1],
+    [9, 12, 0],
+    [24, 13, 1],
+    [38, 12, 0],
+    [55, 13, 1],
+    [70, 11, 0],
+  ];
+
+  const EYE_LEFT = { x: 4, y: 1 };
+  const EYE_RIGHT = { x: 9, y: 1 };
+  const BODY_WIDTH = BODY[0].length;
+  const BODY_HEIGHT = BODY.length;
+  const WELCOME_TEXT = 'Welcome!';
+  const BUBBLE_GAP = 2;
+  const BUBBLE_WIDTH = Math.max(13, WELCOME_TEXT.length + 5);
+  const BUBBLE_HEIGHT = 5;
+  const BUBBLE_TOP_OFFSET = -5;
+  const FPS = 30;
+  const ENTER_SECONDS = 0.34;
+
+  function clamp(value: number, min: number, max: number) {
+    return Math.min(Math.max(value, min), max);
+  }
+
+  function easeOut(t: number) {
+    return 1 - Math.pow(1 - t, 3);
+  }
+
+  function lerp(start: number, end: number, t: number) {
+    return start + (end - start) * t;
+  }
+
+  function getColor(name: string, fallback: string) {
+    const value = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    return value || fallback;
+  }
+
+  function getPalette(): Palette {
+    return {
+      bg: getColor('--paper-surface', '#fffffc'),
+      dot: getColor('--paper-line-strong', 'rgba(31, 35, 40, 0.12)'),
+      ink: getColor('--paper-ink', '#272d28'),
+      soft: getColor('--paper-ink-soft', '#667066'),
+      faint: getColor('--paper-ink-faint', '#90998f'),
+      body: '#cd6e58',
+      eye: '#272d28',
+      white: '#fffffc',
+      blush: '#fac8d8',
+      pink: '#f06090',
+    };
+  }
+
+  function initHomeWelcomeAnimation() {
+    const appWindow = window as WelcomeWindow;
+    appWindow.__homeWelcomeAnimationCleanup?.();
+
+    const root = document.querySelector<HTMLElement>('[data-home-welcome]');
+    const canvas = root?.querySelector<HTMLCanvasElement>('[data-home-welcome-canvas]');
+    const context = canvas?.getContext('2d');
+
+    if (!root || !canvas || !context) return;
+
+    let destroyed = false;
+    let animationFrame = 0;
+    let startedAt = 0;
+    let latestSeconds = 0;
+    let metrics: Metrics = { width: 720, height: 180, cell: 10, cols: 72, rows: 18 };
+    let palette = getPalette();
+    let particles: Particle[] = [];
+    let lastParticleFrame = -1;
+
+    function resizeCanvas() {
+      const rect = canvas.getBoundingClientRect();
+      const dpr = clamp(window.devicePixelRatio || 1, 1, 2);
+      const width = Math.max(1, Math.round(rect.width));
+      const height = Math.max(1, Math.round(rect.height));
+
+      canvas.width = Math.round(width * dpr);
+      canvas.height = Math.round(height * dpr);
+      context.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+      const cell = clamp(Math.floor(Math.min(width / 72, height / 17)), 6, 12);
+      metrics = {
+        width,
+        height,
+        cell,
+        cols: Math.max(1, Math.floor(width / cell)),
+        rows: Math.max(1, Math.floor(height / cell)),
+      };
+    }
+
+    function px(x: number, y: number, color: string) {
+      context.fillStyle = color;
+      context.fillRect(
+        Math.round(x * metrics.cell),
+        Math.round(y * metrics.cell),
+        metrics.cell,
+        metrics.cell,
+      );
+    }
+
+    function drawBackground() {
+      context.clearRect(0, 0, metrics.width, metrics.height);
+      context.fillStyle = palette.bg;
+      context.fillRect(0, 0, metrics.width, metrics.height);
+
+      context.fillStyle = palette.dot;
+      for (let y = 1; y < metrics.rows; y += 2) {
+        for (let x = 1; x < metrics.cols; x += 3) {
+          const radius = Math.max(1.1, metrics.cell * 0.13);
+          context.beginPath();
+          context.arc(
+            x * metrics.cell + metrics.cell / 2,
+            y * metrics.cell + metrics.cell / 2,
+            radius,
+            0,
+            Math.PI * 2,
+          );
+          context.fill();
+        }
+      }
+    }
+
+    function drawStar(x: number, y: number, size: number, color: string) {
+      px(x, y, color);
+      px(x - 1, y, color);
+      px(x + 1, y, color);
+      px(x, y - 1, color);
+      px(x, y + 1, color);
+
+      if (size > 0) {
+        px(x - 2, y, color);
+        px(x + 2, y, color);
+      }
+    }
+
+    function drawStars(seconds: number, placement: ReturnType<typeof getScenePlacement>) {
+      for (const [x, y, type] of STARS) {
+        if (x >= metrics.cols - 1 || y >= metrics.rows - 1) continue;
+
+        const twinkle = Math.sin(seconds * 2.8 + x * 0.4 + y * 0.6);
+        const color = twinkle > 0.35 ? palette.ink : twinkle > -0.4 ? palette.soft : palette.faint;
+        drawStar(x, y, type, color);
+      }
+
+      const rightStart = placement.hasBubble
+        ? placement.bubbleX + BUBBLE_WIDTH + 4
+        : placement.bodyX + BODY_WIDTH + 5;
+      const rightEnd = metrics.cols - 5;
+      const rightSpace = rightEnd - rightStart;
+
+      if (rightSpace < 10) return;
+
+      const rightStars = [
+        { x: 0.08, y: 0.2, size: 0, phase: 0.1 },
+        { x: 0.24, y: 0.68, size: 1, phase: 1.8 },
+        { x: 0.42, y: 0.34, size: 0, phase: 3.2 },
+        { x: 0.62, y: 0.78, size: 0, phase: 4.7 },
+        { x: 0.82, y: 0.26, size: 1, phase: 5.8 },
+      ];
+
+      for (const star of rightStars) {
+        const x = Math.round(rightStart + rightSpace * star.x);
+        const y = clamp(Math.round(1 + (metrics.rows - 3) * star.y), 2, metrics.rows - 3);
+        const floatY = Math.round(Math.sin(seconds * 1.15 + star.phase) * 0.5);
+        const twinkle = Math.sin(seconds * 2.2 + star.phase);
+        const color = twinkle > 0.42 ? palette.ink : twinkle > -0.3 ? palette.soft : palette.faint;
+
+        drawStar(x, y + floatY, star.size, color);
+      }
+
+      if (rightSpace >= 18) {
+        const dust = [
+          { x: 0.18, y: 0.48, phase: 0.5 },
+          { x: 0.36, y: 0.16, phase: 2.6 },
+          { x: 0.58, y: 0.54, phase: 3.8 },
+          { x: 0.76, y: 0.62, phase: 5.1 },
+        ];
+
+        for (const dot of dust) {
+          context.globalAlpha = 0.35 + (Math.sin(seconds * 1.6 + dot.phase) + 1) * 0.16;
+          px(
+            Math.round(rightStart + rightSpace * dot.x),
+            clamp(Math.round(1 + (metrics.rows - 3) * dot.y), 1, metrics.rows - 2),
+            palette.faint,
+          );
+          context.globalAlpha = 1;
+        }
+      }
+    }
+
+    function drawBody(x: number, y: number, eyes: 'forward' | 'blink') {
+      for (let row = 0; row < BODY.length; row += 1) {
+        for (let col = 0; col < BODY[row].length; col += 1) {
+          if (BODY[row][col]) px(x + col, y + row, palette.body);
+        }
+      }
+
+      if (eyes === 'blink') {
+        px(x + EYE_LEFT.x, y + EYE_LEFT.y + 1, palette.eye);
+        px(x + EYE_LEFT.x + 1, y + EYE_LEFT.y + 1, palette.eye);
+        px(x + EYE_RIGHT.x - 1, y + EYE_RIGHT.y + 1, palette.eye);
+        px(x + EYE_RIGHT.x, y + EYE_RIGHT.y + 1, palette.eye);
+        return;
+      }
+
+      px(x + EYE_LEFT.x, y + EYE_LEFT.y, palette.eye);
+      px(x + EYE_RIGHT.x, y + EYE_RIGHT.y, palette.eye);
+    }
+
+    function drawBlush(x: number, y: number) {
+      context.globalAlpha = 0.6;
+      px(x + 3, y + 2, palette.blush);
+      px(x + 10, y + 2, palette.blush);
+      context.globalAlpha = 1;
+    }
+
+    function drawWave(x: number, y: number, side: 'left' | 'right') {
+      if (side === 'right') {
+        px(x + 13, y + 1, palette.body);
+        px(x + 14, y, palette.body);
+        return;
+      }
+
+      px(x, y + 1, palette.body);
+      px(x - 1, y, palette.body);
+    }
+
+    function drawBubble(x: number, y: number, text: string) {
+      const width = Math.max(13, text.length + 5);
+      const height = 4;
+
+      for (let row = 0; row < height; row += 1) {
+        for (let col = 0; col < width; col += 1) {
+          const isBorder = row === 0 || row === height - 1 || col === 0 || col === width - 1;
+          px(x + col, y + row, isBorder ? palette.soft : palette.white);
+        }
+      }
+
+      px(x + 2, y + height, palette.soft);
+      context.fillStyle = palette.ink;
+      context.font = `700 ${Math.max(10, metrics.cell * 1.12)}px "Maple Mono", monospace`;
+      context.textAlign = 'left';
+      context.textBaseline = 'middle';
+      context.fillText(text, (x + 1.4) * metrics.cell, (y + 2) * metrics.cell);
+    }
+
+    function addParticle(x: number, y: number) {
+      particles.push({
+        x,
+        y,
+        vx: (Math.random() - 0.5) * 0.72,
+        vy: -Math.random() * 0.72 - 0.26,
+        life: 1,
+        color: palette.pink,
+      });
+    }
+
+    function drawParticles() {
+      for (let index = particles.length - 1; index >= 0; index -= 1) {
+        const particle = particles[index];
+        particle.x += particle.vx;
+        particle.y += particle.vy;
+        particle.vy += 0.04;
+        particle.life -= 0.028;
+
+        if (particle.life <= 0) {
+          particles.splice(index, 1);
+          continue;
+        }
+
+        if (particle.life > 0.15) {
+          context.globalAlpha = clamp(particle.life, 0, 1);
+          px(Math.round(particle.x), Math.round(particle.y), particle.color);
+          context.globalAlpha = 1;
+        }
+      }
+    }
+
+    function getScenePlacement() {
+      const sceneWidthWithBubble = BODY_WIDTH + BUBBLE_GAP + BUBBLE_WIDTH;
+      const hasBubble = metrics.cols >= sceneWidthWithBubble + 6;
+      const sceneWidth = hasBubble ? sceneWidthWithBubble : BODY_WIDTH;
+      const maxBodyX = Math.max(2, metrics.cols - sceneWidth - 2);
+      const bodyX = clamp(Math.round(metrics.cols / 2 - sceneWidth / 2), 2, maxBodyX);
+      const topOffset = hasBubble ? BUBBLE_TOP_OFFSET : 0;
+      const bottomOffset = hasBubble
+        ? Math.max(BODY_HEIGHT, BUBBLE_TOP_OFFSET + BUBBLE_HEIGHT)
+        : BODY_HEIGHT;
+      const minBodyY = Math.max(1, -topOffset + 1);
+      const maxBodyY = Math.max(minBodyY, metrics.rows - bottomOffset - 1);
+      const bodyY = clamp(
+        Math.round(metrics.rows / 2 - (topOffset + bottomOffset) / 2),
+        minBodyY,
+        maxBodyY,
+      );
+
+      return {
+        bodyX,
+        bodyY,
+        bubbleX: bodyX + BODY_WIDTH + BUBBLE_GAP,
+        bubbleY: bodyY + BUBBLE_TOP_OFFSET,
+        hasBubble,
+      };
+    }
+
+    function render(seconds: number) {
+      const frame = Math.floor(seconds * FPS);
+      const placement = getScenePlacement();
+      const activeSeconds = Math.max(0, seconds - ENTER_SECONDS);
+
+      drawBackground();
+      drawStars(seconds, placement);
+
+      if (seconds < ENTER_SECONDS) {
+        const x = Math.round(
+          lerp(-BODY_WIDTH - 2, placement.bodyX, easeOut(seconds / ENTER_SECONDS)),
+        );
+        drawBody(x, placement.bodyY, 'forward');
+        return;
+      }
+
+      const breath = Math.round(Math.sin(frame * 0.15) * 0.5);
+      const side = Math.sin(activeSeconds * Math.PI * 2.4) >= 0 ? 'right' : 'left';
+      const eyes = frame % 40 < 3 ? 'blink' : 'forward';
+
+      drawBody(placement.bodyX, placement.bodyY + breath, eyes);
+      drawWave(placement.bodyX, placement.bodyY + breath, side);
+      drawBlush(placement.bodyX, placement.bodyY + breath);
+
+      if (placement.hasBubble) {
+        drawBubble(placement.bubbleX, Math.max(1, placement.bubbleY), WELCOME_TEXT);
+      }
+
+      if (frame !== lastParticleFrame && frame % 4 === 0 && particles.length < 28) {
+        lastParticleFrame = frame;
+        addParticle(
+          placement.bodyX + 3 + Math.random() * 8,
+          placement.bodyY - 2 + Math.random() * 4,
+        );
+      }
+
+      drawParticles();
+    }
+
+    function stopLoop() {
+      if (animationFrame) {
+        cancelAnimationFrame(animationFrame);
+        animationFrame = 0;
+      }
+    }
+
+    function loop(timestamp: number) {
+      animationFrame = 0;
+
+      if (destroyed) return;
+
+      if (!startedAt) startedAt = timestamp;
+
+      latestSeconds = (timestamp - startedAt) / 1000;
+      render(latestSeconds);
+
+      if (document.visibilityState === 'visible') {
+        animationFrame = requestAnimationFrame(loop);
+      }
+    }
+
+    function startLoop() {
+      if (destroyed || animationFrame) return;
+      animationFrame = requestAnimationFrame(loop);
+    }
+
+    resizeCanvas();
+    startLoop();
+
+    const resizeObserver =
+      'ResizeObserver' in window
+        ? new ResizeObserver(() => {
+            resizeCanvas();
+            render(latestSeconds || ENTER_SECONDS + 0.8);
+          })
+        : null;
+
+    resizeObserver?.observe(root);
+
+    const intersectionObserver =
+      'IntersectionObserver' in window
+        ? new IntersectionObserver(([entry]) => {
+            if (entry?.isIntersecting) startLoop();
+            else stopLoop();
+          })
+        : null;
+
+    intersectionObserver?.observe(root);
+
+    const themeObserver = new MutationObserver(() => {
+      palette = getPalette();
+      render(latestSeconds || ENTER_SECONDS + 0.8);
+    });
+
+    themeObserver.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['data-theme', 'data-palette'],
+    });
+
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        startLoop();
+      } else {
+        stopLoop();
+      }
+    };
+
+    const onResize = () => {
+      resizeCanvas();
+      render(latestSeconds || ENTER_SECONDS + 0.8);
+    };
+
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    window.addEventListener('resize', onResize, { passive: true });
+
+    const cleanup = () => {
+      destroyed = true;
+      stopLoop();
+      resizeObserver?.disconnect();
+      intersectionObserver?.disconnect();
+      themeObserver.disconnect();
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+      window.removeEventListener('resize', onResize);
+
+      if (appWindow.__homeWelcomeAnimationCleanup === cleanup) {
+        delete appWindow.__homeWelcomeAnimationCleanup;
+      }
+    };
+
+    appWindow.__homeWelcomeAnimationCleanup = cleanup;
+  }
+
+  function bindHomeWelcomeAnimationEvents() {
+    const appWindow = window as WelcomeWindow;
+    if (appWindow.__homeWelcomeAnimationEventsBound) return;
+
+    appWindow.__homeWelcomeAnimationEventsBound = true;
+    document.addEventListener('astro:page-load', initHomeWelcomeAnimation);
+    document.addEventListener('astro:before-swap', () => {
+      appWindow.__homeWelcomeAnimationCleanup?.();
+    });
+    window.addEventListener('pagehide', () => {
+      appWindow.__homeWelcomeAnimationCleanup?.();
+    });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initHomeWelcomeAnimation, { once: true });
+  } else {
+    initHomeWelcomeAnimation();
+  }
+
+  bindHomeWelcomeAnimationEvents();
+</script>
+
+<style>
+  .welcome-animation-card {
+    display: block;
+    width: 100%;
+    margin: 0 0 24px;
+    padding: 0;
+    overflow: hidden;
+    border-color: var(--paper-line);
+    background: color-mix(in srgb, var(--paper-surface) 82%, transparent);
+    box-shadow: none;
+    contain: layout paint;
+  }
+
+  .welcome-animation-card:hover {
+    transform: none;
+    border-color: var(--paper-line-strong);
+    box-shadow: none;
+  }
+
+  .welcome-canvas-frame {
+    width: 100%;
+    height: 172px;
+  }
+
+  canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+  }
+
+  @media (max-width: 820px) {
+    .welcome-animation-card {
+      margin-bottom: 18px;
+    }
+
+    .welcome-canvas-frame {
+      height: 136px;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .welcome-canvas-frame {
+      height: 118px;
+    }
+  }
+</style>

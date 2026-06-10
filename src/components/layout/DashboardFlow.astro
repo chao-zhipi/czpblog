@@ -1,15 +1,29 @@
 <main class="flow-shell" data-pagefind-body>
-  <section class="flow-grid" aria-label="czpirr personal publication">
-    <section class="flow-column main-column">
-      <slot name="hero" />
-      <slot name="recently" />
+  <section class="home-layout" aria-label="czpirr personal publication">
+    <section class="home-welcome-row">
+      <slot name="welcome" />
     </section>
 
-    <aside class="flow-column side-column">
-      <slot name="profile" />
-      <slot name="activity" />
-      <slot name="links" />
-    </aside>
+    <section class="home-profile-row" aria-label="Personal introduction">
+      <section class="home-intro">
+        <slot name="intro" />
+      </section>
+
+      <aside class="home-sidebar">
+        <slot name="profile" />
+      </aside>
+    </section>
+
+    <section class="flow-grid" aria-label="Recent activity and links">
+      <section class="flow-column main-column">
+        <slot name="recently" />
+      </section>
+
+      <aside class="flow-column side-column">
+        <slot name="activity" />
+        <slot name="links" />
+      </aside>
+    </section>
   </section>
 </main>
 
@@ -20,6 +34,14 @@
     padding: 132px var(--layout-page-gutter) var(--layout-page-bottom);
   }
 
+  .home-layout {
+    display: grid;
+    gap: 42px;
+    min-width: 0;
+  }
+
+  .home-welcome-row,
+  .home-profile-row,
   .flow-grid {
     display: grid;
     grid-template-columns: minmax(0, 760px) minmax(240px, 286px);
@@ -28,27 +50,47 @@
     align-items: start;
   }
 
+  .home-welcome-row {
+    display: block;
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  .home-welcome-row :global(.welcome-animation-card) {
+    margin-bottom: 0;
+    max-width: 100%;
+  }
+
+  .home-intro,
+  .home-sidebar {
+    min-width: 0;
+  }
+
   .flow-column {
     display: grid;
     align-content: start;
     min-width: 0;
   }
 
+  .home-layout :global(.glass-card),
   .flow-grid :global(.glass-card) {
     width: 100%;
   }
 
+  .home-profile-row :global(.profile-card),
   .flow-grid :global(.profile-card) {
     min-height: auto;
     padding: 6px 0 2px;
   }
 
+  .home-profile-row :global(.avatar-wrap),
   .flow-grid :global(.avatar-wrap) {
     width: 108px;
     height: 108px;
     margin-bottom: 16px;
   }
 
+  .home-profile-row :global(.profile-heading h1),
   .flow-grid :global(.profile-heading h1) {
     font-size: 1.52rem;
   }
@@ -61,12 +103,13 @@
     padding: 2px 0 0;
   }
 
-  .flow-grid :global(.intro-card) {
+  .home-profile-row :global(.intro-card) {
     min-height: 0;
     padding: 0 0 8px;
   }
 
   @media (max-width: 920px) {
+    .home-profile-row,
     .flow-grid {
       grid-template-columns: 1fr;
       gap: 26px;
@@ -82,40 +125,86 @@
       padding: 96px 18px 42px;
     }
 
-    .flow-grid {
+    .home-layout {
       display: flex;
       flex-direction: column;
       gap: 24px;
     }
 
+    .home-profile-row,
+    .home-intro,
+    .flow-grid,
     .main-column,
-    .side-column {
+    .side-column,
+    .home-profile-row :global(.intro-card),
+    .home-profile-row :global(.intro-copy) {
       display: contents;
     }
 
-    .flow-grid :global(.intro-card) {
+    .home-welcome-row {
+      display: block;
       order: 4;
-      min-height: auto;
-      padding: 0;
+      width: 100%;
+    }
+
+    .home-sidebar {
+      order: 1;
+      width: 100%;
+    }
+
+    .home-profile-row :global(.intro-card h2) {
+      order: 5;
+      width: 100%;
+      margin-bottom: 0;
       scroll-margin-top: 88px;
       scroll-snap-align: start;
       scroll-snap-stop: normal;
     }
 
-    .flow-grid :global(.profile-card) {
-      order: 1;
+    .home-profile-row :global(.quote-mark) {
+      display: none;
+    }
+
+    .home-profile-row :global(.intro-body) {
+      order: 6;
+      width: 100%;
+    }
+
+    .home-profile-row :global(.profile-card) {
+      justify-items: center;
+      min-height: auto;
+      padding: 4px 0 0;
+      text-align: center;
+    }
+
+    .home-profile-row :global(.avatar-wrap) {
+      margin-right: auto;
+      margin-left: auto;
+    }
+
+    .home-profile-row :global(.profile-heading span) {
+      justify-content: center;
     }
 
     .flow-grid :global(.nav-card) {
       order: 2;
+      width: 100%;
     }
 
     .flow-grid :global(.heatmap-card) {
       order: 3;
+      width: 100%;
     }
 
     .flow-grid :global(.doing-card) {
-      order: 5;
+      order: 7;
+      width: 100%;
+    }
+
+    .flow-grid :global(.nav-card),
+    .flow-grid :global(.heatmap-card),
+    .flow-grid :global(.doing-card) {
+      min-width: 0;
     }
 
     :global(html) {
@@ -124,7 +213,7 @@
   }
 
   @media (max-width: 820px) and (prefers-reduced-motion: reduce) {
-    .flow-grid :global(.intro-card) {
+    .home-profile-row :global(.intro-card h2) {
       scroll-snap-align: none;
     }
 

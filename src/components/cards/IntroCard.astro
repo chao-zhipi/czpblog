@@ -25,15 +25,17 @@ const { intro, quote } = Astro.props as { intro: Intro; quote?: Quote };
       <span aria-hidden="true">Hi,</span>
       {intro.title.replace(intro.name, '')}<em>{intro.name}</em>
     </h2>
-    {
-      quote && (
-        <blockquote>
-          <span>- {quote.text.slice(0, 2).join(' ')}</span>
-          <span>{quote.text.slice(2).join(' ')}</span>
-        </blockquote>
-      )
-    }
-    {intro.body.map((paragraph) => <p>{paragraph}</p>)}
+    <div class="intro-body">
+      {
+        quote && (
+          <blockquote>
+            <span>- {quote.text.slice(0, 2).join(' ')}</span>
+            <span>{quote.text.slice(2).join(' ')}</span>
+          </blockquote>
+        )
+      }
+      {intro.body.map((paragraph) => <p>{paragraph}</p>)}
+    </div>
   </div>
 </article>
 
@@ -90,6 +92,10 @@ const { intro, quote } = Astro.props as { intro: Intro; quote?: Quote };
   h2 em {
     color: var(--paper-accent);
     font-style: italic;
+  }
+
+  .intro-body {
+    width: 100%;
   }
 
   blockquote {

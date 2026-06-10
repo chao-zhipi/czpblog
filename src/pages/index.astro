@@ -2,6 +2,7 @@
 import IntroCard from '../components/cards/IntroCard.astro';
 import NavigationCard from '../components/cards/NavigationCard.astro';
 import ProfileCard from '../components/cards/ProfileCard.astro';
+import WelcomeAnimation from '../components/home/WelcomeAnimation.astro';
 import DashboardFlow from '../components/layout/DashboardFlow.astro';
 import BlogHeatmap from '../components/widgets/BlogHeatmap.astro';
 import DoingCard from '../components/widgets/DoingCard.astro';
@@ -14,12 +15,16 @@ const { home, profile, site } = await getSiteConfig();
 <BaseLayout title={site.pageTitle} description={site.pageDescription}>
   <div class="publication-bg" aria-hidden="true"></div>
   <DashboardFlow>
-    <Fragment slot="profile">
-      <ProfileCard profile={profile} />
+    <Fragment slot="welcome">
+      <WelcomeAnimation />
     </Fragment>
 
-    <Fragment slot="hero">
+    <Fragment slot="intro">
       <IntroCard intro={home.intro} quote={home.quote} />
+    </Fragment>
+
+    <Fragment slot="profile">
+      <ProfileCard profile={profile} />
     </Fragment>
 
     <Fragment slot="activity">
